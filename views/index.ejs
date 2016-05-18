@@ -1,0 +1,85 @@
+<html>
+<head>
+  <!-- links to css-->
+    <link rel="stylesheet" type="text/css" href="/style.css">
+  <!-- YOU NEED THIS TO RUN $Jquery!! -->
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <!-- YOU NEED THIS TO RUN SOCKET.IO!! -->
+    <script type ="text/javascript" src="/socket.io/socket.io.js"></script>
+    <!-- STARTS script tag... -->
+    <script type="text/javascript">
+    // preps all script before page can function
+    $(document).ready(function(){
+      // sets up your socket
+      var socket = io.connect();
+      // sets up variable called current_user, but no assingment yet!
+      var current_user;
+      // sets up new_user variable which will run function that in turn assigns a variable "name"
+      var new_user = function(){
+        // how prompt works -- opens window dialog bog, which will read the first "string" you input. 
+        // whatever the user inputs WILL BE RETURNED! *thumbs up*
+        // syntax: prompt(text to display, optional default text input)
+        // if user does not put any name and clicks okay, it will STILL process and show up as no name
+        var name = prompt("Please enter name to chat!"); 
+        // 1. by clicking OK, this will trigger 'page_load' on server.js and send input variable name as "user" - data
+        socket.emit("page_load", {user: name});
+      }
+      // upon page load, run the new_users function!
+      new_user();
+      // when triggered when new user name input already exists and is sent the error message to display as 'error'
+      socket.on("existing_user", function(data){
+        // within the #error div, output the error 
+        $("#error").html(data.error);
+        // immediately run another prompt for new_user()
+        new_user();
+      });
+      // when new user is successfully added and this is triggered (passed current_user data, and all current messages) .. 
+      socket.on("load_messages", function(data){
+        // resets and clears out error message div as necessary
+        $("#error").html("") 
+        // sets variable current_user to the user data that was passed
+        current_user = data.current_user;
+        // sets new variable messages to hold the messages that were passed 
+        var messages = data.messages;
+        // sets new variable messages_thread as an empty string
+        var messages_thread = "";
+        // now acting upon those messages and empty thread .. 
+        for (var i = 0; i < messages.length; i++){
+          // put into the messages_thread variable each message as well as original user name
+          messages_thread += "<p>" + messages[i].name + ": " + messages[i].message + "</p>";
+        }
+        // the now filled messages_thread will be displayed on div message_board
+        $("#message_board").append(messages_thread);
+      })
+      // when a new message is made through the #new_message form ..
+      $("#new_message").submit(function(){
+        // trigger the 'new_message' in server.js, while sending data containing the message input to the #message input, and also the current_user
+        socket.emit("new_message", {message: $("#message").val(), user: current_user })
+        // still trying to figure out why this needs to stay false .. but does NOT work and re sets everything if not here O__O 
+        return false;
+      })
+      // once the new message has been pushed into the messages array and triggers this while echoing back the data ... 
+      socket.on("post_new_message", function(data){
+        // in the #message_board div, append in the message and user name
+        $("#message_board").append("<p>" + data.user + ": " + data.new_message + "</p>");
+      })
+
+    })
+
+  </script>
+</head>
+<body>
+  <div id="error"></div>
+  <div id="game_screen"></div>
+  <h3>Conversation Board</h3>
+  <!-- makes message board certain height and scrollable -->
+<div id="message_board" style="overflow-y: scroll; height:400px; width: 400px;"></div>
+<form id = "new_message">
+  <input type='text' id = 'message' placeholder = "enter your message hereee">
+  <input type='submit' value='Send'>
+ </form>
+
+
+</body>
+</html>
+
